@@ -25,8 +25,9 @@ func (r *BalanceRepository) GetAccount(ctx context.Context, accountID uuid.UUID)
 	query := `SELECT id, balance, updated_at FROM accounts WHERE id = $1`
 
 	var acc domain.Account
+	var balanceStr string
 	err := r.db.QueryRowContext(ctx, query, accountID).Scan(
-		&acc.ID, &acc.Balance, &acc.UpdatedAt,
+		&acc.ID, &balanceStr, &acc.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -34,6 +35,12 @@ func (r *BalanceRepository) GetAccount(ctx context.Context, accountID uuid.UUID)
 		}
 		return nil, fmt.Errorf("get account query: %w", err)
 	}
+
+	balance, err := decimal.NewFromString(balanceStr)
+	if err != nil {
+		return nil, fmt.Errorf("parse balance: %w", err)
+	}
+	acc.Balance = balance
 
 	return &acc, nil
 }

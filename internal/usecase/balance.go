@@ -40,9 +40,13 @@ func (u *BalanceUsecase) GetBalance(ctx context.Context, req *domain.GetBalanceR
 		zap.String("account_id", req.AccountID.String()),
 	)
 
-	// Заглушка
+	account, err := u.repo.GetAccount(ctx, req.AccountID)
+	if err != nil {
+		return nil, err
+	}
+
 	return &domain.GetBalanceResponse{
-		Balance:   decimal.NewFromFloat(100.00),
-		UpdatedAt: time.Now(),
+		Balance:   account.Balance,
+		UpdatedAt: account.UpdatedAt,
 	}, nil
 }

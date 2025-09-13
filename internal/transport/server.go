@@ -2,6 +2,7 @@ package transport
 
 import (
 	"context"
+	"errors"
 	"net"
 
 	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/domain"
@@ -66,7 +67,7 @@ func (s *Server) Process(ctx context.Context, req *pb.ProcessRequest) (*pb.Proce
 
 	resp, err := s.service.Process(ctx, domainReq)
 	if err != nil {
-		return nil, err
+		return nil, mapDomainError(err)
 	}
 
 	return &pb.ProcessResponse{
@@ -89,7 +90,7 @@ func (s *Server) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb
 
 	resp, err := s.service.GetBalance(ctx, domainReq)
 	if err != nil {
-		return nil, err
+		return nil, mapDomainError(err)
 	}
 
 	return &pb.GetBalanceResponse{
@@ -99,6 +100,19 @@ func (s *Server) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb
 }
 
 // TODO надо вынести отдельно
+func mapDomainError(err error) error {
+	if errors.Is(err, domain.ErrNotFound) {
+		return status.Error(codes.NotFound, "account not found")
+	}
+	if errors.Is(err, domain.ErrDuplicateTx) {
+		return status.Error(codes.AlreadyExists, "transaction already exists")
+	}
+	if errors.Is(err, domain.ErrNegativeBalance) {
+		return status.Error(codes.InvalidArgument, "insufficient balance")
+	}
+	return status.Error(codes.Internal, "internal server error")
+}
+
 func mapProtoSource(s pb.Source) (domain.Source, error) {
 	switch s {
 	case pb.Source_SOURCE_GAME:
