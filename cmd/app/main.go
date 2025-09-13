@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"log"
 	"net"
 
 	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/config"
 	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/db"
+	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/logger"
 	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/repository"
 	pb "github.com/MaksimPozharskiy/grpc-balance-processor/proto/balance"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -41,18 +42,31 @@ func (s *server) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb
 func main() {
 	cfg := config.Load()
 
+	log := logger.New(cfg.LogLevel, "balance-service", "dev", "local")
+	logger.SetGlobal(log)
+	defer logger.Sync()
+
+	log.Info("starting application",
+		zap.String("grpc_port", cfg.GRPCPort),
+	)
+
 	database, err := db.NewConnection(cfg.DatabaseDSN)
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		log.Fatal("failed to connect to database", zap.Error(err))
 	}
 	defer database.Close()
+
+	ctx := context.Background()
+	if err := database.HealthCheck(ctx); err != nil {
+		log.Fatal("database health check failed", zap.Error(err))
+	}
 
 	repo := repository.NewBalanceRepository(database)
 	_ = repo // TODO доделать как слои появятся другие
 
 	lis, err := net.Listen("tcp", ":"+cfg.GRPCPort)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatal("failed to listen", zap.Error(err))
 	}
 
 	s := grpc.NewServer()
@@ -65,8 +79,8 @@ func main() {
 
 	reflection.Register(s)
 
-	log.Printf("gRPC server listening on :%s", cfg.GRPCPort)
+	log.Info("gRPC server started", zap.String("port", cfg.GRPCPort))
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		log.Fatal("failed to serve", zap.Error(err))
 	}
 }
