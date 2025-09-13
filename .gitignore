@@ -1,0 +1,17 @@
+*.exe
+*.dll
+*.so
+*.dylib
+*.out
+bin/
+
+proto/
+
+.env
+
+bolt_db/
+pgdata/
+
+.vscode/
+.idea/
+.DS_Store

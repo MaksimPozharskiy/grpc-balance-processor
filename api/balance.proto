@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package balance;
+option go_package = "./proto/balance;balance";
+
+import "google/protobuf/timestamp.proto";
+
+service BalanceService {
+  rpc Process (ProcessRequest) returns (ProcessResponse);
+  rpc GetBalance (GetBalanceRequest) returns (GetBalanceResponse);
+}
+
+enum Source {
+  SOURCE_UNSPECIFIED = 0;
+  SOURCE_GAME        = 1;
+  SOURCE_PAYMENT     = 2;
+  SOURCE_SERVICE     = 3;
+}
+
+enum State {
+  STATE_UNSPECIFIED = 0;
+  STATE_DEPOSIT     = 1;
+  STATE_WITHDRAW    = 2;
+}
+
+enum Status {
+  STATUS_UNSPECIFIED       = 0;
+  STATUS_OK                = 1;
+  STATUS_ALREADY_PROCESSED = 2;
+  STATUS_REJECTED_NEGATIVE = 3;
+}
+
+message ProcessRequest {
+  string account_id = 1;
+  Source source     = 2;
+  State  state      = 3;
+  string amount     = 4;
+  string tx_id      = 5;
+}
+
+message ProcessResponse {
+  string tx_id     = 1;
+  Status status    = 2;
+  string balance   = 3;
+  google.protobuf.Timestamp processed_at = 4;
+}
+
+message GetBalanceRequest {
+  string account_id = 1;
+}
+
+message GetBalanceResponse {
+  string balance = 1;
+  google.protobuf.Timestamp updated_at = 2;
+}
