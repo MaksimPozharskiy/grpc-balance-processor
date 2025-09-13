@@ -1,28 +1,22 @@
 package config
 
 import (
-	"os"
+	"log"
+
+	"github.com/caarlos0/env/v10"
 )
 
 type Config struct {
-	DatabaseDSN      string
-	GRPCPort         string
-	CancelPeriodMin  int
-	LogLevel         string
+	DatabaseDSN     string `env:"DATABASE_DSN,required"`
+	GRPCPort        string `env:"GRPC_PORT" envDefault:"8080"`
+	CancelPeriodMin int    `env:"CANCEL_PERIOD_MIN" envDefault:"5"`
+	LogLevel        string `env:"LOG_LEVEL" envDefault:"info"`
 }
 
 func Load() *Config {
-	return &Config{
-		DatabaseDSN:     getEnv("DATABASE_DSN", "postgres://user:password@localhost:5432/balance?sslmode=disable"),
-		GRPCPort:        getEnv("GRPC_PORT", "8080"),
-		CancelPeriodMin: 5, // TODO  потом сделать из енва
-		LogLevel:        getEnv("LOG_LEVEL", "info"),
+	cfg := &Config{}
+	if err := env.Parse(cfg); err != nil {
+		log.Fatal("Failed to parse config:", err)
 	}
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
+	return cfg
 }

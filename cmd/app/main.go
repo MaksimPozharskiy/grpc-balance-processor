@@ -5,6 +5,9 @@ import (
 	"log"
 	"net"
 
+	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/config"
+	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/db"
+	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/repository"
 	pb "github.com/MaksimPozharskiy/grpc-balance-processor/proto/balance"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -36,7 +39,18 @@ func (s *server) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb
 }
 
 func main() {
-	lis, err := net.Listen("tcp", ":8080")
+	cfg := config.Load()
+
+	database, err := db.NewConnection(cfg.DatabaseDSN)
+	if err != nil {
+		log.Fatalf("failed to connect to database: %v", err)
+	}
+	defer database.Close()
+
+	repo := repository.NewBalanceRepository(database)
+	_ = repo // TODO доделать как слои появятся другие
+
+	lis, err := net.Listen("tcp", ":"+cfg.GRPCPort)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -51,7 +65,7 @@ func main() {
 
 	reflection.Register(s)
 
-	log.Println("gRPC server listening on :8080")
+	log.Printf("gRPC server listening on :%s", cfg.GRPCPort)
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
