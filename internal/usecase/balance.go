@@ -2,9 +2,8 @@ package usecase
 
 import (
 	"context"
-	"time"
+	"errors"
 
-	"github.com/shopspring/decimal"
 	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/domain"
 	"go.uber.org/zap"
 )
@@ -26,12 +25,45 @@ func (u *BalanceUsecase) Process(ctx context.Context, req *domain.ProcessRequest
 		zap.String("amount", req.Amount.String()),
 	)
 
-	// заглушка
+	op := &domain.Operation{
+		TxID:      req.TxID,
+		AccountID: req.AccountID,
+		Source:    req.Source,
+		State:     req.State,
+		Amount:    req.Amount,
+	}
+
+	account, err := u.repo.ProcessTransaction(ctx, op)
+	if err != nil {
+		if errors.Is(err, domain.ErrDuplicateTx) {
+			return &domain.ProcessResponse{
+				TxID:      req.TxID,
+				Status:    domain.StatusAlreadyProcessed,
+				Balance:   account.Balance,
+				Timestamp: account.UpdatedAt,
+			}, nil
+		}
+		if errors.Is(err, domain.ErrNegativeBalance) {
+			currentAccount, getErr := u.repo.GetAccount(ctx, req.AccountID)
+			if getErr != nil {
+				return nil, getErr
+			}
+			return &domain.ProcessResponse{
+				TxID:      req.TxID,
+				Status:    domain.StatusRejectedNegative,
+				Balance:   currentAccount.Balance,
+				Timestamp: currentAccount.UpdatedAt,
+			}, nil
+		}
+		zap.L().Error("ProcessTransaction failed", zap.Error(err))
+		return nil, err
+	}
+
 	return &domain.ProcessResponse{
 		TxID:      req.TxID,
 		Status:    domain.StatusOK,
-		Balance:   decimal.NewFromFloat(100.00),
-		Timestamp: time.Now(),
+		Balance:   account.Balance,
+		Timestamp: account.UpdatedAt,
 	}, nil
 }
 
