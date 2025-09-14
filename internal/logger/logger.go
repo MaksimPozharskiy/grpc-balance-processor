@@ -48,6 +48,6 @@ func SetGlobal(logger *zap.Logger) {
 
 func Sync() {
 	if logger := zap.L(); logger != nil {
-		logger.Sync()
+		_ = logger.Sync()
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockRepository struct {
@@ -54,7 +55,7 @@ func TestBalanceUsecase_Process_Deposit(t *testing.T) {
 	}
 
 	resp, err := usecase.Process(context.Background(), req)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, domain.StatusOK, resp.Status)
 	assert.True(t, resp.Balance.Equal(decimal.NewFromFloat(110.50)))
 }
@@ -76,6 +77,6 @@ func TestBalanceUsecase_GetBalance(t *testing.T) {
 	}
 
 	resp, err := usecase.GetBalance(context.Background(), req)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, resp.Balance.Equal(decimal.NewFromFloat(25.75)))
 }

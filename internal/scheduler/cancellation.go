@@ -3,7 +3,7 @@ package scheduler
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/domain"
@@ -27,7 +27,7 @@ func (s *Scheduler) cancelOne(ctx context.Context, operationID int64) CancelResu
 		return CancelResultFailed
 	}
 	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
 			s.log.Error("failed to rollback transaction", zap.Error(err))
 		}
 	}()
@@ -72,7 +72,7 @@ func (s *Scheduler) cancelOne(ctx context.Context, operationID int64) CancelResu
 		return CancelResultSkipped
 	}
 
-	compensatingTxID := fmt.Sprintf("cancel::%s", operation.TxID)
+	compensatingTxID := "cancel::" + operation.TxID
 
 	// write compensating operation
 	if err := s.createCompensatingOperation(ctx, tx, operation, compensatingTxID, compensatingDelta); err != nil {

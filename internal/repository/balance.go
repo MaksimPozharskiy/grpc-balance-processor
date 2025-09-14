@@ -122,7 +122,9 @@ func (r *BalanceRepository) ProcessTransaction(ctx context.Context, op *domain.O
 	if err != nil {
 		return nil, fmt.Errorf("begin: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback() // main error is more important
+	}()
 
 	// creating account
 	if _, err := tx.ExecContext(ctx, sqlCreateAccount, op.AccountID); err != nil {
@@ -168,7 +170,7 @@ func (r *BalanceRepository) ProcessTransaction(ctx context.Context, op *domain.O
 		return nil, fmt.Errorf("parse updated balance: %w", err)
 	}
 
-	// operation sucessful
+	// operation successful
 	if _, err := tx.ExecContext(ctx, `UPDATE operations SET applied = true WHERE tx_id = $1`, op.TxID); err != nil {
 		return nil, fmt.Errorf("mark applied: %w", err)
 	}
