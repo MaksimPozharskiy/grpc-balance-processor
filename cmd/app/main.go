@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/config"
 	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/db"
 	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/logger"
 	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/repository"
+	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/scheduler"
 	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/transport"
 	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/usecase"
 	"go.uber.org/zap"
@@ -21,6 +23,8 @@ func main() {
 
 	log.Info("starting application",
 		zap.String("grpc_port", cfg.GRPCPort),
+		zap.Bool("cancel_scheduler_enabled", cfg.CancelSchedulerEnabled),
+		zap.Int("cancel_period_min", cfg.CancelPeriodMin),
 	)
 
 	database, err := db.NewConnection(cfg.DatabaseDSN)
@@ -36,6 +40,18 @@ func main() {
 
 	repo := repository.NewBalanceRepository(database)
 	balanceService := usecase.NewBalanceUsecase(repo)
+
+	if cfg.CancelSchedulerEnabled {
+		cancelScheduler := scheduler.NewCancelScheduler(
+			database,
+			time.Duration(cfg.CancelPeriodMin)*time.Minute,
+			log,
+		)
+		go cancelScheduler.Run(ctx)
+		log.Info("cancel scheduler started")
+	} else {
+		log.Info("cancel scheduler disabled")
+	}
 
 	server := transport.NewGRPCServer(balanceService)
 
