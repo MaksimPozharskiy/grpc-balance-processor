@@ -2,18 +2,15 @@ package transport
 
 import (
 	"context"
-	"errors"
 	"net"
 
 	"github.com/MaksimPozharskiy/grpc-balance-processor/internal/domain"
 	pb "github.com/MaksimPozharskiy/grpc-balance-processor/proto/balance"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -97,57 +94,6 @@ func (s *Server) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb
 		Balance:   resp.Balance.String(),
 		UpdatedAt: timestamppb.New(resp.UpdatedAt),
 	}, nil
-}
-
-// TODO надо вынести отдельно
-func mapDomainError(err error) error {
-	if errors.Is(err, domain.ErrNotFound) {
-		return status.Error(codes.NotFound, "account not found")
-	}
-	if errors.Is(err, domain.ErrDuplicateTx) {
-		return status.Error(codes.AlreadyExists, "transaction already exists")
-	}
-	if errors.Is(err, domain.ErrNegativeBalance) {
-		return status.Error(codes.InvalidArgument, "insufficient balance")
-	}
-	return status.Error(codes.Internal, "internal server error")
-}
-
-func mapProtoSource(s pb.Source) (domain.Source, error) {
-	switch s {
-	case pb.Source_SOURCE_GAME:
-		return domain.SourceGame, nil
-	case pb.Source_SOURCE_PAYMENT:
-		return domain.SourcePayment, nil
-	case pb.Source_SOURCE_SERVICE:
-		return domain.SourceService, nil
-	default:
-		return "", status.Error(codes.InvalidArgument, "invalid source value")
-	}
-}
-
-func mapProtoState(s pb.State) (domain.State, error) {
-	switch s {
-	case pb.State_STATE_DEPOSIT:
-		return domain.StateDeposit, nil
-	case pb.State_STATE_WITHDRAW:
-		return domain.StateWithdraw, nil
-	default:
-		return "", status.Error(codes.InvalidArgument, "invalid state value")
-	}
-}
-
-func mapDomainStatus(s domain.ProcessStatus) pb.Status {
-	switch s {
-	case domain.StatusOK:
-		return pb.Status_STATUS_OK
-	case domain.StatusAlreadyProcessed:
-		return pb.Status_STATUS_ALREADY_PROCESSED
-	case domain.StatusRejectedNegative:
-		return pb.Status_STATUS_REJECTED_NEGATIVE
-	default:
-		return pb.Status_STATUS_OK
-	}
 }
 
 func NewGRPCServer(service domain.BalanceService) *grpc.Server {

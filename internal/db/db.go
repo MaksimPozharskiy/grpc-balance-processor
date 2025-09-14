@@ -20,11 +20,6 @@ func NewConnection(dsn string) (*DB, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// TODO подумать куда вынести, в конфиг/env
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
-
 	return &DB{DB: db}, nil
 }
 
