@@ -1,6 +1,4 @@
 # grpc-balance-processor
-Short guide to run the project, verify gRPC endpoints, and hack locally.
-
 ## Prerequisites
 - Docker & Docker Compose
 - `grpcurl` (for local testing)
